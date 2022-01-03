@@ -1,0 +1,6 @@
+version: '3'
+
+services:
+  php-fpm:
+    environment:
+      - APP_ENV=test

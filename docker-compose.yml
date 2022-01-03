@@ -1,0 +1,79 @@
+version: '3'
+
+networks:
+  bot_trading:
+    driver: bridge
+
+services:
+  pyadmin:
+    image: 'registry.gitlab.com/affilomania/multi_trader_admin:v1.11.4'
+    hostname: pyadmin-pyadmintrade
+    container_name: pyadmin-trade
+    command: python3 manage.py runserver 0.0.0.0:5003
+    ports:
+    - "5003:5003"
+    depends_on:
+    - db
+    networks:
+    - bot_trading
+  redis:
+    image: 'redis:4-alpine'
+    hostname: redis-trade
+    container_name: redis-trade
+    command: redis-server --requirepass Q1w2e3r4t5y^
+    ports:
+    - "6379:6379"
+    networks:
+    - bot_trading
+  nginx:
+    image: 'registry.gitlab.com/affilomania/app-web'
+    container_name: nginx-trading
+    hostname: nginx-trading
+    volumes:
+    - ./logs/nginx/:/var/log/nginx
+    ports:
+    - "80:80"
+    - "443:443"
+    command: nginx
+    depends_on:
+    - php-fpm
+    networks:
+    - bot_trading
+  php-fpm:
+    image: 'registry.gitlab.com/affilomania/api-fpm'
+    container_name: phpfpm-trading
+    hostname: phpfpm-trading
+    command: /var/www/docker/start.sh
+    expose:
+    - "9000"
+    depends_on:
+    - redis
+    - db
+    networks:
+    - bot_trading
+  db:
+    image: mysql:5.7.6
+    container_name: mysql-trade
+    hostname: mysql-trade
+    environment:
+      MYSQL_ROOT_PASSWORD: daniel
+      MYSQL_DATABASE: multitrader
+      MYSQL_USER: bot
+      MYSQL_PASSWORD: Q1w2e3r4t5y^
+    volumes:
+    - /opt/dockerdata:/var/lib/mysql
+    ports:
+    - "3306:3306"
+    networks:
+    - bot_trading
+  python:
+    image: 'registry.gitlab.com/affilomania/proftit_robot'
+    container_name: quart-server
+    hostname: quart-server
+    volumes:
+    - ./logs/python /logs/:/app/logs
+    command: supervisord -c /etc/supervisord.conf
+    ports:
+    - "5000:5000"
+    networks:
+    - bot_trading
